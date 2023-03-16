@@ -1,3 +1,7 @@
+# This file is  used to generate the data for GNN model
+# Author: Yifan Wang
+# Date: 2020/12/15
+
 import os
 import json
 import numpy as np
