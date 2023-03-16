@@ -214,8 +214,10 @@ def main():
     graph.val_mask = ppi_data.ppi_split_dict['valid_index']
 
     print("train gnn, train_num: {}, valid_num: {}".format(len(graph.train_mask), len(graph.val_mask)))
-
+    
+    # 将 graph 的原始边索引 edge_index 中训练集所包含的部分赋值给 edge_index_got 属性，并且将其中的起点和终点顺序反转，再与原有的边索引拼接在一起。
     graph.edge_index_got = torch.cat((graph.edge_index[:, graph.train_mask], graph.edge_index[:, graph.train_mask][[1, 0]]), dim=1)
+    # 将 graph 的边属性 edge_attr_1 中训练集所包含的部分赋值给 edge_attr_got 属性，并将其复制一份，再拼接在一起。
     graph.edge_attr_got = torch.cat((graph.edge_attr_1[graph.train_mask], graph.edge_attr_1[graph.train_mask]), dim=0)
     graph.train_mask_got = [i for i in range(len(graph.train_mask))]
 

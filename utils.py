@@ -55,6 +55,8 @@ class Metrictor_PPI:
             print_file("Recall: {}".format(self.Recall), file)
             print_file("F1-Score: {}".format(self.F1), file)
 
+# This class is to implement the union-find set
+# The union-find set is used to find the connected components in the graph
 class UnionFindSet(object):
     def __init__(self, m):
         # m, n = len(grid), len(grid[0])
@@ -108,6 +110,7 @@ def get_bfs_sub_graph(ppi_list, node_num, node_to_edge_index, sub_graph_size):
                 selected_edge_index.append(edge_index)
 
                 end_node = -1
+                # undirected graph
                 if ppi_list[edge_index][0] == cur_node:
                     end_node = ppi_list[edge_index][1]
                 else:

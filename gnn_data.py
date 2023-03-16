@@ -15,15 +15,45 @@ from utils import UnionFindSet, get_bfs_sub_graph, get_dfs_sub_graph
 from torch_geometric.data import Data, Dataset, InMemoryDataset, DataLoader
 
 class GNN_DATA:
+    # data reading 
     def __init__(self, ppi_path, exclude_protein_path=None, max_len=2000, skip_head=True, p1_index=0, p2_index=1, label_index=2, graph_undirection=True, bigger_ppi_path=None):
-        self.ppi_list = []
+        '''
+        ppi_path: 
+            the path of ppi file 
+            defult: "./data/9606.protein.actions.all_connected.txt"
+        exclude_protein_path: 
+            the path of protein file, which contains the protein that we want to exclude
+            defult: None
+        max_len: 
+            the max length of acc number per protein
+            defult: 2000
+        skip_head: 
+            whether to skip the head of ppi file
+            defult: True
+        p1_index: 
+            the index of protein 1 in ppi file
+            defult: 0
+        p2_index: 
+            the index of protein 2 in ppi file
+            defult: 1
+        label_index: 
+            the index of label in ppi file (mode)
+            defult: 2
+        graph_undirection: 
+            whether to make the graph undirection
+            defult: True
+        bigger_ppi_path: 
+            the path of ppi file, which contains more ppi information
+            defult: None
+        '''
+        self.ppi_list = [] 
         self.ppi_dict = {}
         self.ppi_label_list = []
-        self.protein_dict = {}
+        self.protein_dict = {} # no use
         self.protein_name = {}
         self.ppi_path = ppi_path
         self.bigger_ppi_path = bigger_ppi_path
-        self.max_len = max_len
+        self.max_len = max_len # no use
 
         name = 0
         ppi_name = 0
@@ -40,16 +70,19 @@ class GNN_DATA:
 
         class_map = {'reaction':0, 'binding':1, 'ptmod':2, 'activation':3, 'inhibition':4, 'catalysis':5, 'expression':6}
 
+        # This Loop is to get Graph Node and Edge (protein_name, ppi_dict, ppi_label_list)
         for line in tqdm(open(ppi_path)):
             if skip_head:
                 skip_head = False
                 continue
             line = line.strip().split('\t')
 
+            # Remove the protein that we want to exclude
             if line[p1_index] in ex_protein.keys() or line[p2_index] in ex_protein.keys():
                 continue
 
             # get node and node name
+            # name: the number of node
             if line[p1_index] not in self.protein_name.keys():
                 self.protein_name[line[p1_index]] = name
                 name += 1
@@ -59,12 +92,14 @@ class GNN_DATA:
                 name += 1
 
             # get edge and its label
+            # ppi_name: the number of edge
             temp_data = ""
             if line[p1_index] < line[p2_index]:
                 temp_data = line[p1_index] + "__" + line[p2_index]
             else:
                 temp_data = line[p2_index] + "__" + line[p1_index]
 
+            
             if temp_data not in self.ppi_dict.keys():
                 self.ppi_dict[temp_data] = ppi_name
                 temp_label = [0, 0, 0, 0, 0, 0, 0]
@@ -77,6 +112,7 @@ class GNN_DATA:
                 temp_label[class_map[line[label_index]]] = 1
                 self.ppi_label_list[index] = temp_label
         
+        # This Loop is to get more ppi information (if any)
         if bigger_ppi_path != None:
             skip_head = True
             for line in tqdm(open(bigger_ppi_path)):
@@ -112,6 +148,8 @@ class GNN_DATA:
                     self.ppi_label_list[index] = temp_label
 
         i = 0
+        # This Loop is to get the ppi_list from ppi_dict
+        # "9606.ENSP00000000233__9606.ENSP00000263025" -> [9606.ENSP00000000233, 9606.ENSP00000263025]
         for ppi in tqdm(self.ppi_dict.keys()):
             name = self.ppi_dict[ppi]
             assert name == i
@@ -119,7 +157,7 @@ class GNN_DATA:
             temp = ppi.strip().split('__')
             self.ppi_list.append(temp)
 
-
+        # Convert the protein name in ppi_list to IDs (name -> ID)
         ppi_num = len(self.ppi_list)
         self.origin_ppi_list = copy.deepcopy(self.ppi_list)
         assert len(self.ppi_list) == len(self.ppi_label_list)
@@ -130,6 +168,7 @@ class GNN_DATA:
             self.ppi_list[i][0] = self.protein_name[seq1_name]
             self.ppi_list[i][1] = self.protein_name[seq2_name]
         
+        # Add the reverse edge (if undirected graph)
         if graph_undirection:
             for i in tqdm(range(ppi_num)):
                 temp_ppi = self.ppi_list[i][::-1]
@@ -142,8 +181,12 @@ class GNN_DATA:
         self.edge_num = len(self.ppi_list)
     
     def get_protein_aac(self, pseq_path):
-        # aac: amino acid sequences
-
+        """
+        aac: amino acid sequences
+        pseq_path: 
+            the path of protein sequences
+            default: "./data/protein.STRING_all_connected.sequences.dictionary.tsv"
+        """
         self.pseq_path = pseq_path
         self.pseq_dict = {}
         self.protein_len = []
@@ -167,6 +210,10 @@ class GNN_DATA:
         return seq
 
     def vectorize(self, vec_path):
+        """
+            vec_path: the path of protein Embedding vector 
+            default: "./data/vec5_CTC.txt"
+        """
         self.acid2vec = {}
         self.dim = None
         for line in open(vec_path):
@@ -178,7 +225,8 @@ class GNN_DATA:
         print("acid vector dimension: {}".format(self.dim))
 
         self.pvec_dict = {}
-
+        
+        # pesq_dict is from get_protein_aac
         for p_name in tqdm(self.pseq_dict.keys()):
             temp_seq = self.pseq_dict[p_name]
             temp_vec = []
@@ -190,6 +238,7 @@ class GNN_DATA:
 
             self.pvec_dict[p_name] = temp_vec
 
+    # protein vectorize 
     def get_feature_origin(self, pseq_path, vec_path):
         self.get_protein_aac(pseq_path)
 
@@ -206,6 +255,7 @@ class GNN_DATA:
             start, end = edge[0], edge[1]
             self.ufs.union(start, end)
 
+    # generate pyg data 
     def generate_data(self):
         self.get_connected_num()
 
@@ -228,6 +278,7 @@ class GNN_DATA:
 
         self.data = Data(x=self.x, edge_index=self.edge_index.T, edge_attr_1=self.edge_attr)
     
+    # Data partition 
     def split_dataset(self, train_valid_index_path, test_size=0.2, random_new=False, mode='random'):
         if random_new:
             if mode == 'random':
