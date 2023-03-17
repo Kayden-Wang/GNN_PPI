@@ -1,0 +1,3 @@
+__pycache__/
+*.out
+gnn_test_string_*_*/

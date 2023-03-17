@@ -42,6 +42,8 @@ parser.add_argument('--use_lr_scheduler', default=None, type=boolean_string,
                     help="train use learning rate scheduler or not")
 parser.add_argument('--save_path', default=None, type=str,
                     help='model save path')
+parser.add_argument('--tensorboard_path', default=None, type=str,
+                    help='tfboard save path')                  
 parser.add_argument('--graph_only_train', default=None, type=boolean_string,
                     help='train ppi graph conctruct by train or all(train with test)')
 parser.add_argument('--batch_size', default=None, type=int,
@@ -253,7 +255,8 @@ def main():
         f.write('\n')
         f.write("train gnn, train_num: {}, valid_num: {}".format(len(graph.train_mask), len(graph.val_mask)))
 
-    summary_writer = SummaryWriter(save_path)
+    # tensorboard_path = os.path(args.tensorboard_path)
+    summary_writer = SummaryWriter(args.tensorboard_path)
 
     train(model, graph, ppi_list, loss_fn, optimizer, device,
         result_file_path, summary_writer, save_path,

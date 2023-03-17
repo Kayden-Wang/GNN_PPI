@@ -2,7 +2,7 @@ import os
 
 def run_func(description, ppi_path, pseq_path, vec_path,
             split_new, split_mode, train_valid_index_path,
-            use_lr_scheduler, save_path, graph_only_train, 
+            use_lr_scheduler, save_path, tensorboard_path, graph_only_train, 
             batch_size, epochs):
     os.system("python -u gnn_train.py \
             --description={} \
@@ -14,12 +14,13 @@ def run_func(description, ppi_path, pseq_path, vec_path,
             --train_valid_index_path={} \
             --use_lr_scheduler={} \
             --save_path={} \
+            --tensorboard_path={} \
             --graph_only_train={} \
             --batch_size={} \
             --epochs={} \
             ".format(description, ppi_path, pseq_path, vec_path, 
                     split_new, split_mode, train_valid_index_path,
-                    use_lr_scheduler, save_path, graph_only_train, 
+                    use_lr_scheduler, save_path, tensorboard_path, graph_only_train, 
                     batch_size, epochs))
 
 if __name__ == "__main__":
@@ -36,11 +37,14 @@ if __name__ == "__main__":
     use_lr_scheduler = "True"
     save_path = "./save_model/"
     graph_only_train = "False"
+    tensorboard_path = "../tf-logs/"
 
     batch_size = 2048
-    epochs = 300
+    # batch_size = 4096 # to make full use of the GPU memory
+    # epochs = 300
+    epochs = 80 # for test
 
     run_func(description, ppi_path, pseq_path, vec_path, 
             split_new, split_mode, train_valid_index_path,
-            use_lr_scheduler, save_path, graph_only_train, 
+            use_lr_scheduler, save_path, tensorboard_path, graph_only_train, 
             batch_size, epochs)
