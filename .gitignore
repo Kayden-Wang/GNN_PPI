@@ -5,3 +5,5 @@ new_train_valid_index_json/
 data/9606.protein.actions.all_connected.txt
 # match all .ipynb_checkpoints folders
 **/ipynb_checkpoints/
+
+test.py

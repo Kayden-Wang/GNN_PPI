@@ -75,7 +75,11 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
 
         random.shuffle(graph.train_mask)
         random.shuffle(graph.train_mask_got)
-
+        '''
+            函数 train 中，当 got=True 时，将使用 train_mask_got 作为训练集的样本 ID,从而训练一个 GO-terms 模型。
+            这个模型的目标是根据蛋白质之间的相似性，预测它们在哪些 GO-terms 中具有共同的功能。
+            GO-terms 是 Gene Ontology (GO) 词汇集合中的一个子集，用于描述生物学过程、分子功能和细胞成分。
+        '''
         for step in range(steps):
             if step == steps-1:
                 if got:
@@ -212,6 +216,7 @@ def main():
 
     ppi_list = ppi_data.ppi_list
 
+    # graph.train_mask 是一个布尔型的一维张量，用于指示哪些节点在训练时应该被包含
     graph.train_mask = ppi_data.ppi_split_dict['train_index']
     graph.val_mask = ppi_data.ppi_split_dict['valid_index']
 
@@ -221,6 +226,7 @@ def main():
     graph.edge_index_got = torch.cat((graph.edge_index[:, graph.train_mask], graph.edge_index[:, graph.train_mask][[1, 0]]), dim=1)
     # 将 graph 的边属性 edge_attr_1 中训练集所包含的部分赋值给 edge_attr_got 属性，并将其复制一份，再拼接在一起。
     graph.edge_attr_got = torch.cat((graph.edge_attr_1[graph.train_mask], graph.edge_attr_1[graph.train_mask]), dim=0)
+    # 是一个列表，包含了一个从 0 开始的连续整数序列，长度与 graph.train_mask 相同, 这个列表可以被用来指定在训练过程中要使用的样本 ID
     graph.train_mask_got = [i for i in range(len(graph.train_mask))]
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
