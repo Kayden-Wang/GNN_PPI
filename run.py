@@ -1,11 +1,12 @@
 import os
 
-def run_func(description, ppi_path, pseq_path, vec_path,
+def run_func(description, project_name, ppi_path, pseq_path, vec_path,
             split_new, split_mode, train_valid_index_path,
             use_lr_scheduler, save_path, tensorboard_path, graph_only_train, 
             batch_size, epochs):
     os.system("python -u gnn_train.py \
             --description={} \
+            --project_name={}\
             --ppi_path={} \
             --pseq_path={} \
             --vec_path={} \
@@ -18,7 +19,7 @@ def run_func(description, ppi_path, pseq_path, vec_path,
             --graph_only_train={} \
             --batch_size={} \
             --epochs={} \
-            ".format(description, ppi_path, pseq_path, vec_path, 
+            ".format(description, project_name, ppi_path, pseq_path, vec_path, 
                     split_new, split_mode, train_valid_index_path,
                     use_lr_scheduler, save_path, tensorboard_path, graph_only_train, 
                     batch_size, epochs))
@@ -26,13 +27,22 @@ def run_func(description, ppi_path, pseq_path, vec_path,
 if __name__ == "__main__":
     description = "test_string_bfs"
 
-    ppi_path = "./data/9606.protein.actions.all_connected.txt"
-    pseq_path = "./data/protein.STRING_all_connected.sequences.dictionary.tsv"
-    vec_path = "./data/vec5_CTC.txt"
+    project_name = "GNN-PPI"
 
-    split_new = "False"
-    split_mode = "bfs"
-    train_valid_index_path = "./new_train_valid_index_json/string.bfs.fold1.json"
+#     use_dataset = "SHS27k" 
+    # use_dataset = "SHS148k"
+    use_dataset = "STRING"
+
+    ppi_path = f"./data/protein.actions.{use_dataset}.STRING.txt"
+    pseq_path = f"./data/protein.{use_dataset}.sequences.dictionary.tsv"
+    vec_path = "./data/vec5_CTC.txt"
+    
+    split_new = "True"
+    # split_mode = "dfs" # OR "bfs"
+    # split_mode = "dfs"
+#     split_mode = "bfs"
+    split_mode = "random"
+    train_valid_index_path = f"./new_train_valid_index_json/{use_dataset}.{split_mode}.fold.json"
 
     use_lr_scheduler = "True"
     save_path = "./save_model/"
@@ -41,10 +51,10 @@ if __name__ == "__main__":
 
     batch_size = 2048
     # batch_size = 4096 # to make full use of the GPU memory
-    # epochs = 300
-    epochs = 80 # for test
+    epochs = 100
+    # epochs = 80 # for test
 
-    run_func(description, ppi_path, pseq_path, vec_path, 
+    run_func(description, project_name, ppi_path, pseq_path, vec_path, 
             split_new, split_mode, train_valid_index_path,
             use_lr_scheduler, save_path, tensorboard_path, graph_only_train, 
             batch_size, epochs)

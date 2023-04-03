@@ -6,5 +6,8 @@ data/9606.protein.actions.all_connected.txt
 data/
 # match all .ipynb_checkpoints folders
 **/ipynb_checkpoints/
-
+*.ipynb
+/wandb/
 test.py
+*.log
+*ipynb_checkpoints/

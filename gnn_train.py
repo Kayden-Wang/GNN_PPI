@@ -10,8 +10,12 @@ import torch.nn as nn
 from gnn_data import GNN_DATA
 from gnn_model import GIN_Net2
 from utils import Metrictor_PPI, print_file
+import datetime
+# from tensorboardX import SummaryWriter
 
-from tensorboardX import SummaryWriter
+import wandb
+os.environ["WANDB_API_KEY"] = "def7b111fbd26d9cf31c22e6c421e3e334d5b7dd"
+wandb.login()
 
 np.random.seed(1)
 torch.manual_seed(1)
@@ -26,6 +30,8 @@ def boolean_string(s):
 parser = argparse.ArgumentParser(description='Train Model')
 parser.add_argument('--description', default=None, type=str,
                     help='train description')
+parser.add_argument('--project_name', default=None, type=str,
+                    help='wandb project name')
 parser.add_argument('--ppi_path', default=None, type=str,
                     help="ppi path")
 parser.add_argument('--pseq_path', default=None, type=str,
@@ -119,10 +125,10 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
             f1_sum += metrics.F1
             loss_sum += loss.item()
 
-            summary_writer.add_scalar('train/loss', loss.item(), global_step)
-            summary_writer.add_scalar('train/precision', metrics.Precision, global_step)
-            summary_writer.add_scalar('train/recall', metrics.Recall, global_step)
-            summary_writer.add_scalar('train/F1', metrics.F1, global_step)
+            # summary_writer.add_scalar('train/loss', loss.item(), global_step)
+            # summary_writer.add_scalar('train/precision', metrics.Precision, global_step)
+            # summary_writer.add_scalar('train/recall', metrics.Recall, global_step)
+            # summary_writer.add_scalar('train/F1', metrics.F1, global_step)
 
             global_step += 1
             print_file("epoch: {}, step: {}, Train: label_loss: {}, precision: {}, recall: {}, f1: {}"
@@ -184,16 +190,30 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
 
             torch.save({'epoch': epoch, 
                         'state_dict': model.state_dict()},
-                        os.path.join(save_path, 'gnn_model_valid_best.ckpt'))
+                        os.path.join(save_path, 'gnn_model_best.ckpt'))
         
-        summary_writer.add_scalar('valid/precision', metrics.Precision, global_step)
-        summary_writer.add_scalar('valid/recall', metrics.Recall, global_step)
-        summary_writer.add_scalar('valid/F1', metrics.F1, global_step)
-        summary_writer.add_scalar('valid/loss', valid_loss, global_step)
-
+        # summary_writer.add_scalar('valid/precision', metrics.Precision, global_step)
+        # summary_writer.add_scalar('valid/recall', metrics.Recall, global_step)
+        # summary_writer.add_scalar('valid/F1', metrics.F1, global_step)
+        # summary_writer.add_scalar('valid/loss', valid_loss, global_step)
+        
         print_file("epoch: {}, Training_avg: label_loss: {}, recall: {}, precision: {}, F1: {}, Validation_avg: loss: {}, recall: {}, precision: {}, F1: {}, Best valid_f1: {}, in {} epoch"
                     .format(epoch, loss, recall, precision, f1, valid_loss, metrics.Recall, metrics.Precision, metrics.F1, global_best_valid_f1, global_best_valid_f1_epoch), save_file_path=result_file_path)
+        
+        # use wandb format print these information
+        wandb.log({'epoch':epoch, 
+                    'train_loss': loss, 
+                    'train_recall': recall, 
+                    'train_precision': precision, 
+                    'train_F1': f1, 
+                    'valid_loss': valid_loss, 
+                    'valid_recall': metrics.Recall, 
+                    'valid_precision': metrics.Precision, 
+                    'valid_F1': metrics.F1, 
+                    'best_valid_F1': global_best_valid_f1, 
+                    'best_valid_F1_epoch': global_best_valid_f1_epoch})
 
+    wandb.finish()
 def main():
     args = parser.parse_args()
 
@@ -236,6 +256,11 @@ def main():
 
     model = GIN_Net2(in_len=2000, in_feature=13, gin_in_feature=256, num_layers=1, pool_size=3, cnn_hidden=1).to(device)
 
+    # Add wandb to script
+    nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    wandb.init(project=args.project_name, config = args.__dict__, name = nowtime, save_code=True)
+    model.run_id = wandb.run.id
+
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
 
     scheduler = None
@@ -261,16 +286,44 @@ def main():
         f.write('\n')
         f.write("train gnn, train_num: {}, valid_num: {}".format(len(graph.train_mask), len(graph.val_mask)))
 
-    # tensorboard_path = os.path(args.tensorboard_path)
-    summary_writer = SummaryWriter(args.tensorboard_path)
+    # summary_writer = SummaryWriter(args.tensorboard_path)
+    summary_writer = None
+    
+    # log the dataset
+    GNN_PPI_dataset = wandb.Artifact('PPI', type='dataset')
+    GNN_PPI_dataset.add_file(f'{args.ppi_path}')
+    GNN_PPI_dataset.add_file(f'{args.pseq_path}')
+    GNN_PPI_dataset.add_file(f'{args.vec_path}')
+    GNN_PPI_dataset.add_file(f'{args.train_valid_index_path}')
+    wandb.log_artifact(GNN_PPI_dataset)
+    
+    # log the code
+    GNN_PPI_code = wandb.Artifact('Python_code', type='code')
+    GNN_PPI_code.add_file("./gnn_train.py")
+    GNN_PPI_code.add_file("./gnn_data.py")
+    GNN_PPI_code.add_file("./gnn_model.py")
+    GNN_PPI_code.add_file("./run.py")
+    wandb.log_artifact(GNN_PPI_code)
 
     train(model, graph, ppi_list, loss_fn, optimizer, device,
         result_file_path, summary_writer, save_path,
         batch_size=args.batch_size, epochs=args.epochs, scheduler=scheduler, 
         got=args.graph_only_train)
     
-    summary_writer.close()
+    # log the model
+    GNN_PPI_model = wandb.Artifact('GNN_PPI_model', type='model')
+    GNN_PPI_model.add_file(f'{save_path}/gnn_model_best.ckpt')
+    wandb.log_artifact(GNN_PPI_model)
 
+    # summary_writer.close()
 
+def seed_everything(seed):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
 if __name__ == "__main__":
+    seed_everything(seed=42)
     main()
