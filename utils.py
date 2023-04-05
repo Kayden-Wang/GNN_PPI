@@ -1,12 +1,29 @@
 import os
 import numpy as np
 import random
+import time
+import math
 
 def print_file(str_, save_file_path=None):
     print(str_)
     if save_file_path != None:
         f = open(save_file_path, 'a')
         print(str_, file=f)
+
+
+# 返回时间的分钟数
+def asMinutes(s):
+    m = math.floor(s / 60)
+    s -= m * 60
+    return '%dm %ds' % (m, s)
+
+# since: 已经过去的时间 percent 已经过去部分的与整体的比率 | 返回分钟和秒
+def timeSince(since, percent):
+    now = time.time()
+    s = now - since
+    es = s / (percent)
+    rs = es - s
+    return '%s (remain %s)' % (asMinutes(s), asMinutes(rs))
 
 class Metrictor_PPI:
     def __init__(self, pre_y, truth_y, is_binary=False):

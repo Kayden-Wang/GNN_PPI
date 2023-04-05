@@ -29,19 +29,19 @@ if __name__ == "__main__":
 
     project_name = "GNN-PPI"
 
-#     use_dataset = "SHS27k" 
+    use_dataset = "SHS27k" 
     # use_dataset = "SHS148k"
-    use_dataset = "STRING"
+#     use_dataset = "STRING"
 
     ppi_path = f"./data/protein.actions.{use_dataset}.STRING.txt"
     pseq_path = f"./data/protein.{use_dataset}.sequences.dictionary.tsv"
     vec_path = "./data/vec5_CTC.txt"
     
-    split_new = "True"
+    split_new = "False"
     # split_mode = "dfs" # OR "bfs"
-    # split_mode = "dfs"
+    split_mode = "dfs"
 #     split_mode = "bfs"
-    split_mode = "random"
+    # split_mode = "random"
     train_valid_index_path = f"./new_train_valid_index_json/{use_dataset}.{split_mode}.fold.json"
 
     use_lr_scheduler = "True"
@@ -51,7 +51,7 @@ if __name__ == "__main__":
 
     batch_size = 2048
     # batch_size = 4096 # to make full use of the GPU memory
-    epochs = 100
+    epochs = 300
     # epochs = 80 # for test
 
     run_func(description, project_name, ppi_path, pseq_path, vec_path, 

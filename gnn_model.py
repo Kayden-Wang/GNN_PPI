@@ -25,7 +25,9 @@ class GIN_Net2(torch.nn.Module):
         self.maxpool1d = nn.MaxPool1d(pool_size, stride=pool_size)
         self.global_avgpool1d = nn.AdaptiveAvgPool1d(1)
         self.fc1 = nn.Linear(math.floor(in_len / pool_size), gin_in_feature)
-
+        # for esm
+        # self.fc1 = nn.Linear(math.floor(in_len / pool_size)-1, gin_in_feature)
+        
         # 基于图卷积神经网络（GCN）的节点嵌入方法。它通过对节点的邻居进行聚合，生成新的节点表示。
         # 这里使用的GINConv是根据给定的一系列转换函数对输入进行聚合的算子。
         self.gin_conv1 = GINConv( 

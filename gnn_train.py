@@ -8,8 +8,10 @@ import torch
 import torch.nn as nn
 
 from gnn_data import GNN_DATA
+# from gnn_data_esm import GNN_DATA
 from gnn_model import GIN_Net2
-from utils import Metrictor_PPI, print_file
+# from gnn_model_esm import GIN_Net2 as GIN_Net2_esm
+from utils import Metrictor_PPI, print_file, timeSince
 import datetime
 # from tensorboardX import SummaryWriter
 
@@ -67,7 +69,7 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
     global_best_valid_f1_epoch = 0
 
     truth_edge_num = graph.edge_index.shape[1] // 2
-
+    start = time.time()
     for epoch in range(epochs):
 
         recall_sum = 0.0
@@ -86,7 +88,7 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
             这个模型的目标是根据蛋白质之间的相似性，预测它们在哪些 GO-terms 中具有共同的功能。
             GO-terms 是 Gene Ontology (GO) 词汇集合中的一个子集，用于描述生物学过程、分子功能和细胞成分。
         '''
-        for step in range(steps):
+        for step in range(steps):  
             if step == steps-1:
                 if got:
                     train_edge_id = graph.train_mask_got[step*batch_size:]
@@ -133,7 +135,7 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
             global_step += 1
             print_file("epoch: {}, step: {}, Train: label_loss: {}, precision: {}, recall: {}, f1: {}"
                         .format(epoch, step, loss.item(), metrics.Precision, metrics.Recall, metrics.F1))
-        
+
         torch.save({'epoch': epoch,
                     'state_dict': model.state_dict()},
                     os.path.join(save_path, 'gnn_model_train.ckpt'))
@@ -199,7 +201,7 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
         
         print_file("epoch: {}, Training_avg: label_loss: {}, recall: {}, precision: {}, F1: {}, Validation_avg: loss: {}, recall: {}, precision: {}, F1: {}, Best valid_f1: {}, in {} epoch"
                     .format(epoch, loss, recall, precision, f1, valid_loss, metrics.Recall, metrics.Precision, metrics.F1, global_best_valid_f1, global_best_valid_f1_epoch), save_file_path=result_file_path)
-        
+        print_file('Elapsed {remain:s} '.format(remain = timeSince(start, float(epoch+1)/epochs))) 
         # use wandb format print these information
         wandb.log({'epoch':epoch, 
                     'train_loss': loss, 
@@ -216,12 +218,16 @@ def train(model, graph, ppi_list, loss_fn, optimizer, device,
     wandb.finish()
 def main():
     args = parser.parse_args()
-
     ppi_data = GNN_DATA(ppi_path=args.ppi_path)
+
 
     print("use_get_feature_origin")
     ppi_data.get_feature_origin(pseq_path=args.pseq_path, vec_path=args.vec_path)
-
+    # for esm_1b
+    # ppi_data.get_feature_origin(pseq_path=args.pseq_path, model="facebook/esm1b_t33_650M_UR50S", regenerate="False")
+    # for esm_2_base
+    # ppi_data.get_feature_origin(pseq_path=args.pseq_path, model="facebook/esm2_t12_35M_UR50D", regenerate="False")
+    
     ppi_data.generate_data()
 
     print("----------------------- start split train and valid index -------------------")
@@ -255,7 +261,13 @@ def main():
     graph.to(device)
 
     model = GIN_Net2(in_len=2000, in_feature=13, gin_in_feature=256, num_layers=1, pool_size=3, cnn_hidden=1).to(device)
-
+    # for esm_1b
+    # model = GIN_Net2(in_len=1024, in_feature=1280, gin_in_feature=256, num_layers=1, pool_size=3, cnn_hidden=1).to(device)
+    # for esm_2_base
+    # model = GIN_Net2(in_len=1024, in_feature=480, gin_in_feature=256, num_layers=1, pool_size=3, cnn_hidden=1).to(device)
+    # Ajust_model
+    # model = GIN_Net2_esm(in_len=1024, in_feature=480, gin_in_feature=256, num_layers=1, pool_size=3, cnn_hidden=1).to(device)
+    
     # Add wandb to script
     nowtime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     wandb.init(project=args.project_name, config = args.__dict__, name = nowtime, save_code=True)
@@ -310,12 +322,13 @@ def main():
         batch_size=args.batch_size, epochs=args.epochs, scheduler=scheduler, 
         got=args.graph_only_train)
     
-    # log the model
-    GNN_PPI_model = wandb.Artifact('GNN_PPI_model', type='model')
-    GNN_PPI_model.add_file(f'{save_path}/gnn_model_best.ckpt')
-    wandb.log_artifact(GNN_PPI_model)
+    # # log the model
+    # GNN_PPI_model = wandb.Artifact('GNN_PPI_model', type='model')
+    # GNN_PPI_model.add_file(f'{save_path}/gnn_model_best.ckpt')
+    # wandb.log_artifact(GNN_PPI_model)
 
     # summary_writer.close()
+    wandb.finish()
 
 def seed_everything(seed):
     random.seed(seed)

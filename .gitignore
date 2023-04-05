@@ -11,3 +11,4 @@ data/
 test.py
 *.log
 *ipynb_checkpoints/
+esm_1b/
